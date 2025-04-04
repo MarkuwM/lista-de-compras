@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta com Callback</title>
+</head>
+
+<body>
+    <h2>Consulta de Nota (Callback)</h2>
+    <input type="number" id="idCallback" placeholder="Digite o ID do aluno">
+    <button onclick="consultarCallback()">Consultar</button>
+    <p id="resultadoCallback"></p>
+
+    <script>
+        const alunos = [
+            { id: 1, nome: "Ana", nota: 8.5 },
+            { id: 2, nome: "Bruno", nota: 7.2 },
+            { id: 3, nome: "Carla", nota: 9.0 }
+        ];
+
+        function consultarNotaCallback(id, callback) {
+            setTimeout(() => {
+                const aluno = alunos.find(a => a.id === id);
+                if (aluno) {
+                    callback(null, aluno);
+                } else {
+                    callback(`Erro: Aluno com ID ${id} não encontrado no sistema.`);
+                }
+            }, 2000);
+        }
+
+        function consultarCallback() {
+            const id = parseInt(document.getElementById("idCallback").value);
+            const resultado = document.getElementById("resultadoCallback");
+            resultado.textContent = "Consultando...";
+
+            consultarNotaCallback(id, (erro, aluno) => {
+                if (erro) {
+                    resultado.textContent = erro;
+                } else {
+                    resultado.textContent = `${aluno.nome} tirou nota ${aluno.nota}`;
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

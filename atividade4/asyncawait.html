@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta com Async/Await</title>
+</head>
+
+<body>
+    <h2>Consulta de Nota (Async/Await)</h2>
+    <input type="number" id="idAsync" placeholder="Digite o ID do aluno">
+    <button onclick="consultarComAsync()">Consultar</button>
+    <p id="resultadoAsync"></p>
+
+    <script>
+        const alunos = [
+            { id: 1, nome: "Ana", nota: 8.5 },
+            { id: 2, nome: "Bruno", nota: 7.2 },
+            { id: 3, nome: "Carla", nota: 9.0 }
+        ];
+
+        function consultarNotaPromise(id) {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    const aluno = alunos.find(a => a.id === id);
+                    if (aluno) {
+                        resolve(aluno);
+                    } else {
+                        reject(`Erro: Aluno com ID ${id} não encontrado no sistema.`);
+                    }
+                }, 2000);
+            });
+        }
+
+        async function consultarComAsync() {
+            const id = parseInt(document.getElementById("idAsync").value);
+            const resultado = document.getElementById("resultadoAsync");
+            resultado.textContent = "Consultando...";
+
+            try {
+                const aluno = await consultarNotaPromise(id);
+                resultado.textContent = `${aluno.nome} tirou nota ${aluno.nota}`;
+            } catch (erro) {
+                resultado.textContent = erro;
+            }
+        }
+    </script>
+</body>
+
+</html>

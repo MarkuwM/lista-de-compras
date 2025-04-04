@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta com Promise</title>
+</head>
+
+<body>
+    <h2>Consulta de Nota (Promise)</h2>
+    <input type="number" id="idPromise" placeholder="Digite o ID do aluno">
+    <button onclick="consultarComPromise()">Consultar</button>
+    <p id="resultadoPromise"></p>
+
+    <script>
+        const alunos = [
+            { id: 1, nome: "Ana", nota: 8.5 },
+            { id: 2, nome: "Bruno", nota: 7.2 },
+            { id: 3, nome: "Carla", nota: 9.0 }
+        ];
+
+        function consultarNotaPromise(id) {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    const aluno = alunos.find(a => a.id === id);
+                    if (aluno) {
+                        resolve(aluno);
+                    } else {
+                        reject(`Erro: Aluno com ID ${id} não encontrado no sistema.`);
+                    }
+                }, 2000);
+            });
+        }
+
+        function consultarComPromise() {
+            const id = parseInt(document.getElementById("idPromise").value);
+            const resultado = document.getElementById("resultadoPromise");
+            resultado.textContent = "Consultando...";
+
+            consultarNotaPromise(id)
+                .then(aluno => {
+                    resultado.textContent = `${aluno.nome} tirou nota ${aluno.nota}`;
+                })
+                .catch(erro => {
+                    resultado.textContent = erro;
+                });
+        }
+    </script>
+</body>
+
+</html>
