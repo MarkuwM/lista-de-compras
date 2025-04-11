@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informações sobre Nomes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            width: 200px;
+            margin: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        input,
+        button {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .error {
+            color: red;
+            margin-top: 20px;
+        }
+
+        .loading {
+            margin-top: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Informações sobre Nomes</h1>
+    <div>
+        <input type="text" id="nomeInput" placeholder="Digite um nome">
+        <button id="buscarBtn">Buscar</button>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">Carregando dados...</div>
+    <div id="error" class="error"></div>
+
+    <div id="resultados" class="container" style="display: none;">
+        <div class="card">
+            <h2>Idade</h2>
+            <p id="idade">-</p>
+            <p id="contagemIdade">Nº de ocorrências: -</p>
+        </div>
+        <div class="card">
+            <h2>Gênero</h2>
+            <p id="genero">-</p>
+            <p id="probabilidade">Probabilidade: -</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('buscarBtn').addEventListener('click', buscarInformacoes);
+        document.getElementById('nomeInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                buscarInformacoes();
+            }
+        });
+
+        function buscarInformacoes() {
+            const nome = document.getElementById('nomeInput').value.trim();
+            if (!nome) {
+                mostrarErro("Por favor, digite um nome.");
+                return;
+            }
+
+            document.getElementById('error').textContent = '';
+            document.getElementById('resultados').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+
+            Promise.all([
+                fetch(`https://api.agify.io?name=${nome}`).then(r => r.json()),
+                fetch(`https://api.genderize.io?name=${nome}`).then(r => r.json())
+            ])
+                .then(([idadeData, generoData]) => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('resultados').style.display = 'flex';
+
+                    document.getElementById('idade').textContent = idadeData.age || 'Não disponível';
+                    document.getElementById('contagemIdade').textContent = `Nº de ocorrências: ${idadeData.count || 'Não disponível'}`;
+
+                    document.getElementById('genero').textContent = generoData.gender || 'Não disponível';
+                    const probabilidade = generoData.probability ? (generoData.probability * 100).toFixed(1) + '%' : 'Não disponível';
+                    document.getElementById('probabilidade').textContent = `Probabilidade: ${probabilidade}`;
+                })
+                .catch(error => {
+                    document.getElementById('loading').style.display = 'none';
+                    mostrarErro("Ocorreu um erro ao buscar os dados. Tente novamente mais tarde.");
+                    console.error("Erro:", error);
+                });
+        }
+
+        function mostrarErro(mensagem) {
+            document.getElementById('error').textContent = mensagem;
+        }
+    </script>
+</body>
+
+</html>

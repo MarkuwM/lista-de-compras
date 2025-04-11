@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informações por Nome</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        input,
+        button {
+            padding: 8px;
+            margin: 5px 0;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        #resultado {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Informações por Nome</h1>
+
+    <input id="nomeInput" placeholder="Digite um nome">
+    <button onclick="buscarInformacoes()">Buscar</button>
+
+    <div id="resultado"></div>
+
+    <script>
+        async function buscarInformacoes() {
+            const nome = document.getElementById('nomeInput').value.trim();
+            const resultadoDiv = document.getElementById('resultado');
+
+            if (!nome) {
+                resultadoDiv.innerHTML = '<p class="error">Por favor, digite um nome.</p>';
+                return;
+            }
+
+            resultadoDiv.innerHTML = '<p>Carregando...</p>';
+
+            try {
+                const [idadeRes, generoRes, paisRes] = await Promise.all([
+                    fetch(`https://api.agify.io?name=${nome}`),
+                    fetch(`https://api.genderize.io?name=${nome}`),
+                    fetch(`https://api.nationalize.io?name=${nome}`)
+                ]);
+
+                if (!idadeRes.ok || !generoRes.ok || !paisRes.ok) {
+                    throw new Error("Erro ao consultar uma ou mais APIs");
+                }
+
+                const [idadeData, generoData, paisData] = await Promise.all([
+                    idadeRes.json(),
+                    generoRes.json(),
+                    paisRes.json()
+                ]);
+
+                let html = `<h2>Resultados para: ${nome}</h2>`;
+
+                html += `<p><strong>Idade estimada:</strong> ${idadeData.age || 'Desconhecida'}</p>`;
+
+                html += `<p><strong>Gênero provável:</strong> ${generoData.gender === 'male' ? 'Masculino' :
+                    generoData.gender === 'female' ? 'Feminino' : 'Indeterminado'} 
+                         (probabilidade: ${generoData.probability ? (generoData.probability * 100).toFixed(1) + '%' : 'N/A'})</p>`;
+
+                if (paisData.country && paisData.country.length > 0) {
+                    html += `<p><strong>País(es) mais provável(eis):</strong> `;
+                    paisData.country.forEach((c, i) => {
+                        if (i > 0) html += ', ';
+                        html += `${c.country_id} (${(c.probability * 100).toFixed(1)}%)`;
+                    });
+                    html += `</p>`;
+                } else {
+                    html += `<p><strong>País:</strong> Não identificado</p>`;
+                }
+
+                resultadoDiv.innerHTML = html;
+
+            } catch (error) {
+                resultadoDiv.innerHTML = `<p class="error">Erro ao buscar informações: ${error.message}</p>`;
+                console.error("Erro:", error);
+            }
+        }
+    </script>
+</body>
+
+</html>
