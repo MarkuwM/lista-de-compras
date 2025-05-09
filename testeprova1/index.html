@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catálogo Digital</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .invalid { border: 2px solid red; }
+    .valid { border: 2px solid green; }
+    .item { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 8px; }
+    .item button { margin-left: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Catálogo Digital</h1>
+  <form id="itemForm">
+    <input type="hidden" id="itemId" />
+    <div>
+      <label>Nome:</label>
+      <input type="text" id="nome" required />
+    </div>
+    <div>
+      <label>Preço (R$):</label>
+      <input type="number" id="preco" step="0.01" required />
+    </div>
+    <div>
+      <label>Descrição:</label>
+      <textarea id="descricao" required></textarea>
+    </div>
+    <div>
+      <label>Categoria:</label>
+      <select id="categoria">
+        <option value="Bebida">Bebida</option>
+        <option value="Comida">Comida</option>
+        <option value="Sobremesa">Sobremesa</option>
+      </select>
+    </div>
+    <div>
+      <label>CEP:</label>
+      <input type="text" id="cep" maxlength="9" />
+    </div>
+    <button type="submit">Salvar</button>
+  </form>
+
+  <h2>Itens do Catálogo</h2>
+  <div id="catalogo"></div>
+
+  <script>
+    const form = document.getElementById('itemForm');
+    const catalogo = document.getElementById('catalogo');
+    const fields = ['nome', 'preco', 'descricao', 'categoria', 'cep'];
+
+    function getItens() {
+      return JSON.parse(localStorage.getItem('itensCatalogo')) || [];
+    }
+
+    function saveItens(itens) {
+      localStorage.setItem('itensCatalogo', JSON.stringify(itens));
+    }
+
+    function renderCatalogo() {
+      catalogo.innerHTML = '';
+      const itens = getItens();
+      itens.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          <strong>${item.nome}</strong> - R$${item.preco}<br>
+          ${item.descricao}<br>
+          <em>${item.categoria}</em><br>
+          <small>${item.cep}</small>
+          <button onclick="editItem(${index})">Editar</button>
+          <button onclick="deleteItem(${index})">Excluir</button>
+        `;
+        catalogo.appendChild(div);
+      });
+    }
+
+    function validateField(id, condition) {
+      const el = document.getElementById(id);
+      if (condition) {
+        el.classList.add('valid');
+        el.classList.remove('invalid');
+      } else {
+        el.classList.add('invalid');
+        el.classList.remove('valid');
+      }
+    }
+
+    function editItem(index) {
+      const itens = getItens();
+      const item = itens[index];
+      document.getElementById('itemId').value = index;
+      fields.forEach(f => document.getElementById(f).value = item[f]);
+    }
+
+    function deleteItem(index) {
+      const itens = getItens();
+      itens.splice(index, 1);
+      saveItens(itens);
+      renderCatalogo();
+    }
+
+    async function buscarEndereco(cep) {
+      const url = `https://viacep.com.br/ws/${cep.replace(/\D/g, '')}/json/`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Erro na API');
+        const data = await response.json();
+        if (data.erro) throw new Error('CEP inválido');
+        alert(`Endereço: ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`);
+      } catch (error) {
+        alert('Erro ao buscar CEP: ' + error.message);
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const nome = document.getElementById('nome').value.trim();
+      const preco = parseFloat(document.getElementById('preco').value);
+      const descricao = document.getElementById('descricao').value.trim();
+      const categoria = document.getElementById('categoria').value;
+      const cep = document.getElementById('cep').value.trim();
+
+      validateField('nome', nome.length >= 3);
+      validateField('preco', !isNaN(preco) && preco > 0);
+      validateField('descricao', descricao.length >= 5);
+      validateField('categoria', categoria !== '');
+      validateField('cep', cep.match(/^\d{5}-?\d{3}$/));
+
+      if (!(nome.length >= 3 && !isNaN(preco) && preco > 0 && descricao.length >= 5 && categoria !== '' && cep.match(/^\d{5}-?\d{3}$/))) {
+        return;
+      }
+
+      buscarEndereco(cep); // Chamada da API externa
+
+      const item = { nome, preco, descricao, categoria, cep };
+      const itens = getItens();
+      const itemId = document.getElementById('itemId').value;
+      if (itemId) {
+        itens[parseInt(itemId)] = item;
+      } else {
+        itens.push(item);
+      }
+
+      saveItens(itens);
+      renderCatalogo();
+      form.reset();
+      fields.forEach(f => document.getElementById(f).classList.remove('valid', 'invalid'));
+    });
+
+    renderCatalogo();
+  </script>
+</body>
+</html>

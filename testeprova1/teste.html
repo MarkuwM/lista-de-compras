@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo Digital Simplificado</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, select, textarea { display: block; margin-bottom: 10px; width: 100%; max-width: 300px; }
+    .valid { border: 2px solid green; }
+    .invalid { border: 2px solid red; }
+    .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Catálogo</h1>
+  <form id="form">
+    <input type="hidden" id="id">
+    <input type="text" id="nome" placeholder="Nome">
+    <input type="number" id="preco" placeholder="Preço">
+    <textarea id="descricao" placeholder="Descrição"></textarea>
+    <select id="categoria">
+      <option value="">Selecione</option>
+      <option value="Comida">Comida</option>
+      <option value="Bebida">Bebida</option>
+    </select>
+    <input type="text" id="cep" placeholder="CEP">
+    <button type="submit">Salvar</button>
+  </form>
+
+  <div id="lista"></div>
+
+  <script>
+    const form = document.getElementById('form');
+    const lista = document.getElementById('lista');
+    const campos = ['nome', 'preco', 'descricao', 'categoria', 'cep'];
+
+    function validar() {
+      let valido = true;
+      campos.forEach(id => {
+        const el = document.getElementById(id);
+        const ok = id === 'cep' ? /^\d{5}-?\d{3}$/.test(el.value) : el.value.trim();
+        el.className = ok ? 'valid' : 'invalid';
+        if (!ok) valido = false;
+      });
+      return valido;
+    }
+
+    function salvarItem(e) {
+      e.preventDefault();
+      if (!validar()) return;
+
+      const item = Object.fromEntries(campos.map(id => [id, document.getElementById(id).value]));
+      const id = document.getElementById('id').value;
+      const dados = JSON.parse(localStorage.getItem('itens') || '[]');
+      if (id) dados[id] = item; else dados.push(item);
+      localStorage.setItem('itens', JSON.stringify(dados));
+      form.reset(); campos.forEach(id => document.getElementById(id).className = '');
+      listarItens();
+      if (item.cep) buscarCEP(item.cep);
+    }
+
+    function listarItens() {
+      lista.innerHTML = '';
+      const dados = JSON.parse(localStorage.getItem('itens') || '[]');
+      dados.forEach((item, i) => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `${item.nome} - R$${item.preco}<br>${item.descricao}<br>${item.categoria}<br>${item.cep}
+          <button onclick="editar(${i})">Editar</button>
+          <button onclick="excluir(${i})">Excluir</button>`;
+        lista.appendChild(div);
+      });
+    }
+
+    function editar(i) {
+      const item = JSON.parse(localStorage.getItem('itens'))[i];
+      campos.forEach(id => document.getElementById(id).value = item[id]);
+      document.getElementById('id').value = i;
+    }
+
+    function excluir(i) {
+      const dados = JSON.parse(localStorage.getItem('itens'));
+      dados.splice(i, 1);
+      localStorage.setItem('itens', JSON.stringify(dados));
+      listarItens();
+    }
+
+    async function buscarCEP(cep) {
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${cep.replace(/\D/g, '')}/json/`);
+        const dados = await res.json();
+        if (!dados.erro) alert(`Endereço: ${dados.logradouro}, ${dados.localidade}`);
+      } catch (e) {
+        alert('CEP inválido');
+      }
+    }
+
+    form.addEventListener('submit', salvarItem);
+    listarItens();
+  </script>
+</body>
+</html>
