@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Formulários e Catálogo com API</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+    }
+
+    input, label, textarea, select {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    input, textarea, select {
+      padding: 0.5rem;
+      width: 300px;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .erro {
+      border-color: red;
+      background-color: #ffe5e5;
+    }
+
+    .valido {
+      border-color: green;
+      background-color: #e5ffe5;
+    }
+
+    .mensagem-erro {
+      color: red;
+      font-size: 0.9rem;
+      margin-top: -0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .sucesso {
+      color: green;
+      font-weight: bold;
+    }
+
+    .lista, .catalogo {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #ccc;
+    }
+
+    .item, .card {
+      background-color: #f9f9f9;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-radius: 5px;
+      border-left: 4px solid #007BFF;
+    }
+
+    .card img {
+      max-width: 100px;
+      max-height: 100px;
+      margin-bottom: 0.5rem;
+    }
+
+    .botao-editar {
+      background-color: #ff9800;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+
+    .botao-remover {
+      background-color: #f44336;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 1rem;
+      margin-left: 1rem;
+    }
+
+    .endereco {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Cadastro de Pessoas</h1>
+  <form id="formularioPessoa">
+    <label for="nome">Nome:</label>
+    <input type="text" id="nome">
+    <div class="mensagem-erro" id="erro-nome"></div>
+
+    <label for="email">E-mail:</label>
+    <input type="email" id="email">
+    <div class="mensagem-erro" id="erro-email"></div>
+
+    <label for="telefone">Telefone:</label>
+    <input type="tel" id="telefone">
+    <div class="mensagem-erro" id="erro-telefone"></div>
+
+    <label for="data">Data da Visita:</label>
+    <input type="date" id="data">
+    <div class="mensagem-erro" id="erro-data"></div>
+
+    <label for="satisfacao">Satisfação (0 a 10):</label>
+    <input type="range" id="satisfacao" min="0" max="10">
+    <div class="mensagem-erro" id="erro-satisfacao"></div>
+
+    <br>
+    <input type="submit" value="Enviar">
+    <p id="mensagem-final" class="sucesso"></p>
+  </form>
+
+  <div class="lista" id="listaPessoas"></div>
+
+  <h1>Adicionar ou Editar Item do Catálogo</h1>
+  <form id="formularioItem">
+    <label for="itemNome">Nome do Item:</label>
+    <input type="text" id="itemNome" required>
+
+    <label for="itemDescricao">Descrição:</label>
+    <textarea id="itemDescricao" required></textarea>
+
+    <label for="itemPreco">Preço (R$):</label>
+    <input type="number" id="itemPreco" step="0.01" required>
+
+    <label for="itemCategoria">Categoria:</label>
+    <select id="itemCategoria" required>
+      <option value="">Selecione</option>
+      <option value="Bebida">Bebida</option>
+      <option value="Comida">Comida</option>
+      <option value="Sobremesa">Sobremesa</option>
+    </select>
+
+    <label for="itemImagem">URL da Imagem:</label>
+    <input type="url" id="itemImagem" required>
+
+    <br>
+    <input type="submit" value="Adicionar Item">
+    <p id="mensagem-item" class="sucesso"></p>
+  </form>
+
+  <div class="catalogo" id="catalogo"></div>
+
+  <h2>Buscar Endereço pelo CEP</h2>
+  <form id="formularioCep">
+    <label for="cep">CEP:</label>
+    <input type="text" id="cep" placeholder="Digite o CEP" required>
+
+    <br>
+    <input type="submit" value="Buscar Endereço">
+  </form>
+
+  <div id="endereco" class="endereco"></div>
+
+  <script>
+    let itemEditando = null;
+
+    // Função para buscar dados de CEP com Promise
+    function buscarEnderecoCep(cep) {
+      return new Promise((resolve, reject) => {
+        const cepValido = /^[0-9]{5}-?[0-9]{3}$/.test(cep);
+        if (!cepValido) {
+          reject("CEP inválido!");
+        }
+
+        fetch(`https://viacep.com.br/ws/${cep}/json/`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.erro) {
+              reject("CEP não encontrado.");
+            } else {
+              resolve(data);
+            }
+          })
+          .catch(error => reject("Erro ao buscar o endereço."));
+      });
+    }
+
+    // Event listener para buscar o CEP
+    document.getElementById("formularioCep").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const cep = document.getElementById("cep").value;
+
+      buscarEnderecoCep(cep)
+        .then(data => {
+          document.getElementById("endereco").innerHTML = `
+            <strong>Logradouro:</strong> ${data.logradouro}<br>
+            <strong>Bairro:</strong> ${data.bairro}<br>
+            <strong>Cidade:</strong> ${data.localidade}<br>
+            <strong>Estado:</strong> ${data.uf}<br>
+          `;
+        })
+        .catch(error => {
+          document.getElementById("endereco").innerHTML = error;
+        });
+    });
+
+    // Função para salvar pessoas no localStorage
+    function salvarPessoas(pessoas) {
+      localStorage.setItem("pessoas", JSON.stringify(pessoas));
+    }
+
+    // Função para salvar itens do catálogo no localStorage
+    function salvarCatalogo(catalogo) {
+      localStorage.setItem("catalogo", JSON.stringify(catalogo));
+    }
+
+    // Recupera dados do localStorage ao carregar a página
+    window.onload = function () {
+      const catalogoSalvo = JSON.parse(localStorage.getItem("catalogo")) || [];
+      catalogoSalvo.forEach(item => {
+        adicionarItemCatalogo(item);
+      });
+
+      const pessoasSalvas = JSON.parse(localStorage.getItem("pessoas")) || [];
+      pessoasSalvas.forEach(pessoa => {
+        adicionarPessoa(pessoa);
+      });
+    };
+
+    // Adiciona pessoa à lista e salva no localStorage
+    document.getElementById("formularioPessoa").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const nome = document.getElementById("nome").value;
+      const email = document.getElementById("email").value;
+      const telefone = document.getElementById("telefone").value;
+      const data = document.getElementById("data").value;
+      const satisfacao = document.getElementById("satisfacao").value;
+
+      const novaPessoa = { nome, email, telefone, data, satisfacao };
+
+      // Recupera e adiciona pessoa no localStorage
+      const pessoas = JSON.parse(localStorage.getItem("pessoas")) || [];
+      pessoas.push(novaPessoa);
+      salvarPessoas(pessoas);
+
+      adicionarPessoa(novaPessoa);
+      document.getElementById("mensagem-final").textContent = "Cadastro realizado!";
+      this.reset();
+    });
+
+    // Adiciona pessoa ao DOM
+    function adicionarPessoa(pessoa) {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <strong>Nome:</strong> ${pessoa.nome}<br>
+        <strong>Email:</strong> ${pessoa.email}<br>
+        <strong>Telefone:</strong> ${pessoa.telefone}<br>
+        <strong>Data:</strong> ${pessoa.data}<br>
+        <strong>Satisfação:</strong> ${pessoa.satisfacao}/10
+      `;
+      document.getElementById("listaPessoas").appendChild(div);
+    }
+
+    // Adiciona item ao catálogo e salva no localStorage
+    document.getElementById("formularioItem").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const nome = document.getElementById("itemNome").value;
+      const descricao = document.getElementById("itemDescricao").value;
+      const preco = parseFloat(document.getElementById("itemPreco").value).toFixed(2);
+      const categoria = document.getElementById("itemCategoria").value;
+      const imagem = document.getElementById("itemImagem").value;
+
+      const novoItem = { nome, descricao, preco, categoria, imagem };
+
+      if (itemEditando) {
+        // Editar item existente
+        itemEditando.querySelector("h3").textContent = nome;
+        itemEditando.querySelector(".descricao").textContent = descricao;
+        itemEditando.querySelector(".preco").textContent = `R$ ${preco}`;
+        itemEditando.querySelector(".categoria").textContent = categoria;
+        itemEditando.querySelector("img").src = imagem;
+
+        atualizarCatalogo();
+        document.getElementById("mensagem-item").textContent = "Item atualizado!";
+      } else {
+        // Adicionar novo item
+        adicionarItemCatalogo(novoItem);
+        document.getElementById("mensagem-item").textContent = "Item adicionado ao catálogo!";
+      }
+
+      // Limpar formulário
+      this.reset();
+      itemEditando = null;
+    });
+
+    // Adiciona item ao DOM e ao localStorage
+    function adicionarItemCatalogo(item) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <img src="${item.imagem}" alt="${item.nome}">
+        <h3>${item.nome}</h3>
+        <p class="descricao">${item.descricao}</p>
+        <p class="categoria"><strong>Categoria:</strong> ${item.categoria}</p>
+        <p class="preco"><strong>Preço:</strong> R$ ${item.preco}</p>
+        <button class="botao-editar">Editar</button>
+        <button class="botao-remover">Remover</button>
+      `;
+      document.getElementById("catalogo").appendChild(card);
+
+      // Botão de remover
+      card.querySelector(".botao-remover").addEventListener("click", function () {
+        card.remove();
+        atualizarCatalogo();
+        document.getElementById("mensagem-item").textContent = "Item removido!";
+      });
+
+      // Botão de editar
+      card.querySelector(".botao-editar").addEventListener("click", function () {
+        document.getElementById("itemNome").value = item.nome;
+        document.getElementById("itemDescricao").value = item.descricao;
+        document.getElementById("itemPreco").value = item.preco;
+        document.getElementById("itemCategoria").value = item.categoria;
+        document.getElementById("itemImagem").value = item.imagem;
+
+        itemEditando = card;
+      });
+
+      // Atualiza o catalogo no localStorage
+      const catalogoSalvo = JSON.parse(localStorage.getItem("catalogo")) || [];
+      catalogoSalvo.push(item);
+      salvarCatalogo(catalogoSalvo);
+    }
+
+    // Atualiza o catálogo no localStorage
+    function atualizarCatalogo() {
+      const items = [];
+      const catalogo = document.querySelectorAll(".card");
+      catalogo.forEach(card => {
+        const item = {
+          nome: card.querySelector("h3").textContent,
+          descricao: card.querySelector(".descricao").textContent,
+          preco: card.querySelector(".preco").textContent.replace("R$ ", ""),
+          categoria: card.querySelector(".categoria").textContent.replace("Categoria: ", ""),
+          imagem: card.querySelector("img").src
+        };
+        items.push(item);
+      });
+      salvarCatalogo(items);
+    }
+  </script>
+
+</body>
+</html>
