@@ -1,88 +1,108 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Formulário Dinâmico</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo Digital Simplificado</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 2rem;
-    }
-    input, label {
-      display: block;
-      margin-bottom: 1rem;
-    }
-    input {
-      padding: 0.5rem;
-      width: 300px;
-      border: 2px solid #ccc;
-      border-radius: 4px;
-      transition: 0.3s;
-    }
-    .focado {
-      border-color: #007BFF;
-      background-color: #e7f0ff;
-    }
-    .validado {
-      border-color: green;
-    }
-    .erro {
-      border-color: red;
-    }
+    body { font-family: sans-serif; padding: 20px; }
+    input, select, textarea { display: block; margin-bottom: 10px; width: 100%; max-width: 300px; }
+    .valid { border: 2px solid green; }
+    .invalid { border: 2px solid red; }
+    .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
-
-  <h1>Formulário com Estilização Dinâmica</h1>
-
-  <form id="meuFormulario">
-    <label for="nome">Nome:</label>
-    <input type="text" id="nome" name="nome" required>
-
-    <label for="email">E-mail:</label>
-    <input type="email" id="email" name="email" required>
-
-    <label for="telefone">Telefone:</label>
-    <input type="tel" id="telefone" name="telefone">
-
-    <label for="data">Data da Visita:</label>
-    <input type="date" id="data" name="data">
-
-    <label for="satisfacao">Satisfação:</label>
-    <input type="range" id="satisfacao" name="satisfacao" min="0" max="10">
-
-    <input type="submit" value="Enviar">
+  <h1>Catálogo</h1>
+  <form id="formularioProduto">
+    <input type="hidden" id="indiceEdicao">
+    <input type="text" id="campoNome" placeholder="Nome">
+    <input type="number" id="campoPreco" placeholder="Preço">
+    <textarea id="campoDescricao" placeholder="Descrição"></textarea>
+    <select id="campoCategoria">
+      <option value="">Selecione</option>
+      <option value="Comida">Comida</option>
+      <option value="Bebida">Bebida</option>
+    </select>
+    <input type="text" id="campoCep" placeholder="CEP">
+    <button type="submit">Salvar</button>
   </form>
 
+  <div id="listaProdutos"></div>
+
   <script>
-    // Adiciona classe ao focar no campo
-    const inputs = document.querySelectorAll("input");
+    const formulario = document.getElementById('formularioProduto');
+    const listaProdutos = document.getElementById('listaProdutos');
+    const camposFormulario = ['campoNome', 'campoPreco', 'campoDescricao', 'campoCategoria', 'campoCep'];
 
-    inputs.forEach(input => {
-      input.addEventListener("focus", () => {
-        input.classList.add("focado");
+    function validarCampos() {
+      let todosValidos = true;
+      camposFormulario.forEach(campoId => {
+        const campo = document.getElementById(campoId);
+        const valorValido = campoId === 'campoCep' ? /^\d{5}-?\d{3}$/.test(campo.value) : campo.value.trim();
+        campo.className = valorValido ? 'valid' : 'invalid';
+        if (!valorValido) todosValidos = false;
       });
+      return todosValidos;
+    }
 
-      input.addEventListener("blur", () => {
-        input.classList.remove("focado");
+    function salvarProduto(evento) {
+      evento.preventDefault();
+      if (!validarCampos()) return;
+
+      const novoProduto = Object.fromEntries(camposFormulario.map(campoId => [campoId, document.getElementById(campoId).value]));
+      const indice = document.getElementById('indiceEdicao').value;
+      const listaSalva = JSON.parse(localStorage.getItem('catalogoProdutos') || '[]');
+      if (indice) listaSalva[indice] = novoProduto;
+      else listaSalva.push(novoProduto);
+
+      localStorage.setItem('catalogoProdutos', JSON.stringify(listaSalva));
+      formulario.reset();
+      camposFormulario.forEach(campoId => document.getElementById(campoId).className = '');
+      exibirProdutos();
+
+      if (novoProduto.campoCep) buscarEnderecoPorCep(novoProduto.campoCep);
+    }
+
+    function exibirProdutos() {
+      listaProdutos.innerHTML = '';
+      const produtos = JSON.parse(localStorage.getItem('catalogoProdutos') || '[]');
+      produtos.forEach((produto, indice) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'item';
+        itemDiv.innerHTML = `${produto.campoNome} - R$${produto.campoPreco}<br>${produto.campoDescricao}<br>${produto.campoCategoria}<br>${produto.campoCep}
+          <button onclick="editarProduto(${indice})">Editar</button>
+          <button onclick="excluirProduto(${indice})">Excluir</button>`;
+        listaProdutos.appendChild(itemDiv);
       });
-    });
+    }
 
-    // Validação simples no envio
-    document.getElementById("meuFormulario").addEventListener("submit", function (e) {
-      e.preventDefault(); // Evita o envio para demonstração
+    function editarProduto(indice) {
+      const produtos = JSON.parse(localStorage.getItem('catalogoProdutos'));
+      const produto = produtos[indice];
+      camposFormulario.forEach(campoId => document.getElementById(campoId).value = produto[campoId]);
+      document.getElementById('indiceEdicao').value = indice;
+    }
 
-      inputs.forEach(input => {
-        if (input.checkValidity()) {
-          input.classList.remove("erro");
-          input.classList.add("validado");
-        } else {
-          input.classList.remove("validado");
-          input.classList.add("erro");
-        }
-      });
-    });
+    function excluirProduto(indice) {
+      const produtos = JSON.parse(localStorage.getItem('catalogoProdutos'));
+      produtos.splice(indice, 1);
+      localStorage.setItem('catalogoProdutos', JSON.stringify(produtos));
+      exibirProdutos();
+    }
+
+    async function buscarEnderecoPorCep(cep) {
+      try {
+        const resposta = await fetch(`https://viacep.com.br/ws/${cep.replace(/\D/g, '')}/json/`);
+        const dadosCep = await resposta.json();
+        if (!dadosCep.erro) alert(`Endereço: ${dadosCep.logradouro}, ${dadosCep.localidade}`);
+      } catch (erro) {
+        alert('Erro ao buscar CEP.');
+      }
+    }
+
+    formulario.addEventListener('submit', salvarProduto);
+    exibirProdutos();
   </script>
-
 </body>
 </html>
